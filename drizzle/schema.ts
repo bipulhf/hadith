@@ -9,5 +9,8 @@ export const user = pgTable("users", {
 
 export const hadith = pgTable("hadiths", {
   id: serial("id").primaryKey(),
-  hadith: varchar("hadith", { length: 500 }).notNull(),
+  description: varchar("description", { length: 1000 }).notNull(),
+  rabi: varchar("rabi", { length: 255 }).notNull(),
+  book: varchar("book", { length: 255 }).notNull(),
+  level: varchar("level", { length: 255 }).notNull(),
 });
