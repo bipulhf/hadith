@@ -1,0 +1,28 @@
+version: "3.8"
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    ports:
+      - 8000:8000
+    depends_on:
+      - db
+    environment:
+      - DATABASE_URL=postgres://bipulhf:3933@db:5432/hadith
+      - PORT=8000
+    command: bash -c 'while !</dev/tcp/db/5432; do sleep 5; done; npx drizzle-kit push && npm run dev'
+
+  db:
+    image: postgres
+    ports:
+      - 5433:5432
+    volumes:
+      - ./data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=bipulhf
+      - POSTGRES_PASSWORD=3933
+      - POSTGRES_DB=hadith
+volumes:
+  db_vol:
+    external: true
