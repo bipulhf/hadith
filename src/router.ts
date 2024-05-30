@@ -195,7 +195,7 @@ router.get("/hadith/:id", async (req, res) => {
   }
 });
 
-router.get("/hadith/fav/:mobile", async (req, res) => {
+router.get("/hadith/fav", async (req, res) => {
   try {
     const { mobile } = req.body;
     const fav = await db.query.favHadith.findMany({
