@@ -69,7 +69,7 @@ router.post("/hadith/fav", async (req, res) => {
     const fav = await db
       .insert(favHadith)
       .values({
-        hadithId,
+        hadithId: +hadithId,
         mobile,
       })
       .returning();
