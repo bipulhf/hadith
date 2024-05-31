@@ -28,7 +28,7 @@ router.post("/check-subscription", async (req, res) => {
     console.log(NUM_EXT + number);
 
     // Make a POST request to check subscription status
-    const response = await (
+    const response: any = await (
       await fetch(BASE_URL + "/subscription/getStatus", {
         method: "POST",
         body: JSON.stringify({
@@ -39,19 +39,21 @@ router.post("/check-subscription", async (req, res) => {
       })
     ).json();
 
+    console.log(response);
+
     // Check if the request was successful
     if (response.status === 200) {
       // Send response with subscription status
       res.status(200).json({
-        version: response.data.version,
-        statusCode: response.data.statusCode,
-        statusDetail: response.data.statusDetail,
-        subscriptionStatus: response.data.subscriptionStatus,
+        version: response.version,
+        statusCode: response.statusCode,
+        statusDetail: response.statusDetail,
+        subscriptionStatus: response.subscriptionStatus,
       });
     } else {
       throw new Error("Failed to check subscription status");
     }
-  } catch (error) {
+  } catch (error: any) {
     res.status(400).send(error.message);
   }
 });
@@ -62,8 +64,8 @@ router.post("/subscribe", async (req, res) => {
     const { number } = req.body;
 
     // Make a POST request to bdapps.com/sub
-    const response = await (
-      await fetch(BASE_URL + "/subscription/otp/request/", {
+    const response: any = await (
+      await fetch(BASE_URL + "/subscription/otp/request", {
         method: "POST",
         body: JSON.stringify({
           applicationId: APP_ID,
@@ -82,15 +84,15 @@ router.post("/subscribe", async (req, res) => {
 
       // Send response with referenceNo
       res.status(200).json({
-        statusCode: response.data.statusCode,
+        statusCode: response.statusCode,
         referenceNo,
-        statusDetail: response.data.statusDetail,
+        statusDetail: response.statusDetail,
         applicationMetaData: META_DATA,
       });
     } else {
       throw new Error("Failed to send data to bdapps.com/sub");
     }
-  } catch (error) {
+  } catch (error: any) {
     res.status(400).send(error.message);
   }
 });
@@ -106,7 +108,7 @@ router.post("/confirm_subscription", async (req, res) => {
     }
 
     // Make a POST request to verify OTP
-    const response = await (
+    const response: any = await (
       await fetch(BASE_URL + "/subscription/otp/verify", {
         method: "POST",
         body: JSON.stringify({
@@ -124,7 +126,7 @@ router.post("/confirm_subscription", async (req, res) => {
     } else {
       throw new Error("Failed to verify OTP");
     }
-  } catch (error) {
+  } catch (error: any) {
     res.status(400).send(error.message);
   }
 });
@@ -139,14 +141,14 @@ router.post("/send-sms", async (req, res) => {
   };
 
   try {
-    const response = await (
+    const response: any = await (
       await fetch(BASE_URL + "/sms/send", {
         method: "POST",
         body: JSON.stringify(payload),
       })
     ).json();
-    res.status(200).send(response.data);
-  } catch (error) {
+    res.status(200).send(response);
+  } catch (error: any) {
     console.error(error);
     res.status(500).send({ error: "Failed to send SMS" });
   }
