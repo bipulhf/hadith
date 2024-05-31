@@ -4,7 +4,7 @@ import { favHadith, hadith } from "../drizzle/schema";
 
 const router = Router();
 
-const BASE_URL = "https://developers.bdapps.com";
+const BASE_URL = "https://developer.bdapps.com";
 const APP_ID = "APP_118837";
 const APP_HASH = "bla";
 const APP_PASS = "7d45ec27acfcd97a26a67c093a87086b";
@@ -25,30 +25,24 @@ router.post("/check-subscription", async (req, res) => {
       throw new Error("Missing required fields in the request body");
     }
 
-    console.log(NUM_EXT + number);
-
     // Make a POST request to check subscription status
-    const response: any = await (
-      await fetch(BASE_URL + "/subscription/getStatus", {
-        method: "POST",
-        body: JSON.stringify({
-          applicationId: APP_ID,
-          password: APP_PASS,
-          subscriberId: NUM_EXT + number,
-        }),
-      })
-    ).json();
-
-    console.log(response);
-
+    const response = await fetch(BASE_URL + "/subscription/getStatus", {
+      method: "POST",
+      body: JSON.stringify({
+        applicationId: APP_ID,
+        password: APP_PASS,
+        subscriberId: NUM_EXT + number,
+      }),
+    });
     // Check if the request was successful
     if (response.status === 200) {
       // Send response with subscription status
+      const data: any = await response.json();
       res.status(200).json({
-        version: response.version,
-        statusCode: response.statusCode,
-        statusDetail: response.statusDetail,
-        subscriptionStatus: response.subscriptionStatus,
+        version: data.version,
+        statusCode: data.statusCode,
+        statusDetail: data.statusDetail,
+        subscriptionStatus: data.subscriptionStatus,
       });
     } else {
       throw new Error("Failed to check subscription status");
@@ -64,29 +58,28 @@ router.post("/subscribe", async (req, res) => {
     const { number } = req.body;
 
     // Make a POST request to bdapps.com/sub
-    const response: any = await (
-      await fetch(BASE_URL + "/subscription/otp/request", {
-        method: "POST",
-        body: JSON.stringify({
-          applicationId: APP_ID,
-          password: APP_PASS,
-          subscriberId: NUM_EXT + number,
-          applicationHash: APP_HASH,
-          applicationMetaData: META_DATA,
-        }),
-      })
-    ).json();
+    const response = await fetch(BASE_URL + "/subscription/otp/request", {
+      method: "POST",
+      body: JSON.stringify({
+        applicationId: APP_ID,
+        password: APP_PASS,
+        subscriberId: NUM_EXT + number,
+        applicationHash: APP_HASH,
+        applicationMetaData: META_DATA,
+      }),
+    });
 
     // Check if the request was successful
     if (response.status === 200) {
       // Extract referenceNo from the response
-      const { referenceNo } = response.data;
+      const data: any = await response.json();
+      const { referenceNo } = data;
 
       // Send response with referenceNo
       res.status(200).json({
-        statusCode: response.statusCode,
+        statusCode: data.statusCode,
         referenceNo,
-        statusDetail: response.statusDetail,
+        statusDetail: data.statusDetail,
         applicationMetaData: META_DATA,
       });
     } else {
@@ -108,17 +101,15 @@ router.post("/confirm_subscription", async (req, res) => {
     }
 
     // Make a POST request to verify OTP
-    const response: any = await (
-      await fetch(BASE_URL + "/subscription/otp/verify", {
-        method: "POST",
-        body: JSON.stringify({
-          applicationId: APP_ID,
-          password: APP_PASS,
-          referenceNo,
-          otp,
-        }),
-      })
-    ).json();
+    const response = await fetch(BASE_URL + "/subscription/otp/verify", {
+      method: "POST",
+      body: JSON.stringify({
+        applicationId: APP_ID,
+        password: APP_PASS,
+        referenceNo,
+        otp,
+      }),
+    });
 
     // Check if the request was successful
     if (response.status === 200) {
@@ -141,13 +132,16 @@ router.post("/send-sms", async (req, res) => {
   };
 
   try {
-    const response: any = await (
-      await fetch(BASE_URL + "/sms/send", {
-        method: "POST",
-        body: JSON.stringify(payload),
-      })
-    ).json();
-    res.status(200).send(response);
+    const response = await fetch(BASE_URL + "/sms/send", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    if (response.status === 200) {
+      const data = await response.json();
+      res.status(200).send(data);
+    } else {
+      throw new Error("Failed to send SMS");
+    }
   } catch (error: any) {
     console.error(error);
     res.status(500).send({ error: "Failed to send SMS" });
