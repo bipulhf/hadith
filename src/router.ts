@@ -2,6 +2,7 @@ import { Router } from "express";
 import db from "../drizzle/db";
 import { favContact, favHadith, hadith } from "../drizzle/schema";
 import axios from "axios";
+import { and, eq } from "drizzle-orm";
 
 const router = Router();
 
@@ -228,13 +229,34 @@ router.get("/favContact/:mobile", async (req, res) => {
 router.post("/favContact/:mobile", async (req, res) => {
   try {
     const { mobile } = req.params;
-    const { fav_mobile } = req.body;
+    const { fav_mobile, name } = req.body;
     const fav = await db
       .insert(favContact)
       .values({
         user_mobile: mobile,
         fav_mobile,
+        name,
       })
+      .returning();
+    return res.status(201).json(fav);
+  } catch (e) {
+    console.log(e);
+    return res.status(400).json({ message: "Bad Request" });
+  }
+});
+
+router.delete("/favContact/:mobile", async (req, res) => {
+  try {
+    const { mobile } = req.params;
+    const { fav_mobile } = req.body;
+    const fav = await db
+      .delete(favContact)
+      .where(
+        and(
+          eq(favContact.user_mobile, mobile),
+          eq(favContact.fav_mobile, fav_mobile)
+        )
+      )
       .returning();
     return res.status(201).json(fav);
   } catch (e) {
