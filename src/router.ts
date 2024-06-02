@@ -245,6 +245,30 @@ router.post("/favContact/:mobile", async (req, res) => {
   }
 });
 
+router.put("/favContact/:mobile", async (req, res) => {
+  try {
+    const { mobile } = req.params;
+    const { fav_mobile, edited_fav_mobile, name } = req.body;
+    const fav = await db
+      .update(favContact)
+      .set({
+        fav_mobile: edited_fav_mobile,
+        name,
+      })
+      .where(
+        and(
+          eq(favContact.user_mobile, mobile),
+          eq(favContact.fav_mobile, fav_mobile)
+        )
+      )
+      .returning();
+    return res.status(201).json(fav);
+  } catch (e) {
+    console.log(e);
+    return res.status(400).json({ message: "Bad Request" });
+  }
+});
+
 router.delete("/favContact/:mobile", async (req, res) => {
   try {
     const { mobile } = req.params;
