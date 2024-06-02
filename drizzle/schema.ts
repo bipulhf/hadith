@@ -39,3 +39,8 @@ export const favHadithRelations = relations(favHadith, ({ one }) => ({
     references: [hadith.id],
   }),
 }));
+
+export const favContact = pgTable("fav_contacts", {
+  user_mobile: varchar("user_mobile", { length: 11 }).notNull(),
+  fav_mobile: varchar("fav_mobile", { length: 11 }).notNull(),
+});

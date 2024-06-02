@@ -1,6 +1,7 @@
 import { Router } from "express";
 import db from "../drizzle/db";
-import { favHadith, hadith } from "../drizzle/schema";
+import { favContact, favHadith, hadith } from "../drizzle/schema";
+import axios from "axios";
 
 const router = Router();
 
@@ -15,6 +16,7 @@ const META_DATA = {
   os: "android 8",
   appCode: "https://play.google.com/store/apps/details?id=lk",
 };
+
 // Check if a user is subscribed or not
 router.post("/check-subscription", async (req, res) => {
   try {
@@ -25,24 +27,23 @@ router.post("/check-subscription", async (req, res) => {
       throw new Error("Missing required fields in the request body");
     }
 
+    console.log(NUM_EXT + number);
+
     // Make a POST request to check subscription status
-    const response = await fetch(BASE_URL + "/subscription/getStatus", {
-      method: "POST",
-      body: JSON.stringify({
-        applicationId: APP_ID,
-        password: APP_PASS,
-        subscriberId: NUM_EXT + number,
-      }),
+    const response = await axios.post(BASE_URL + "/subscription/getStatus", {
+      applicationId: APP_ID,
+      password: APP_PASS,
+      subscriberId: NUM_EXT + number,
     });
+
     // Check if the request was successful
     if (response.status === 200) {
       // Send response with subscription status
-      const data: any = await response.json();
       res.status(200).json({
-        version: data.version,
-        statusCode: data.statusCode,
-        statusDetail: data.statusDetail,
-        subscriptionStatus: data.subscriptionStatus,
+        version: response.data.version,
+        statusCode: response.data.statusCode,
+        statusDetail: response.data.statusDetail,
+        subscriptionStatus: response.data.subscriptionStatus,
       });
     } else {
       throw new Error("Failed to check subscription status");
@@ -58,28 +59,26 @@ router.post("/subscribe", async (req, res) => {
     const { number } = req.body;
 
     // Make a POST request to bdapps.com/sub
-    const response = await fetch(BASE_URL + "/subscription/otp/request", {
-      method: "POST",
-      body: JSON.stringify({
-        applicationId: APP_ID,
-        password: APP_PASS,
-        subscriberId: NUM_EXT + number,
-        applicationHash: APP_HASH,
-        applicationMetaData: META_DATA,
-      }),
+    const response = await axios.post(BASE_URL + "/subscription/otp/request/", {
+      applicationId: APP_ID,
+      password: APP_PASS,
+      subscriberId: NUM_EXT + number,
+      applicationHash: APP_HASH,
+      applicationMetaData: META_DATA,
     });
+
+    console.log(response);
 
     // Check if the request was successful
     if (response.status === 200) {
       // Extract referenceNo from the response
-      const data: any = await response.json();
-      const { referenceNo } = data;
+      const { referenceNo } = response.data;
 
       // Send response with referenceNo
       res.status(200).json({
-        statusCode: data.statusCode,
+        statusCode: response.data.statusCode,
         referenceNo,
-        statusDetail: data.statusDetail,
+        statusDetail: response.data.statusDetail,
         applicationMetaData: META_DATA,
       });
     } else {
@@ -101,14 +100,11 @@ router.post("/confirm_subscription", async (req, res) => {
     }
 
     // Make a POST request to verify OTP
-    const response = await fetch(BASE_URL + "/subscription/otp/verify", {
-      method: "POST",
-      body: JSON.stringify({
-        applicationId: APP_ID,
-        password: APP_PASS,
-        referenceNo,
-        otp,
-      }),
+    const response = await axios.post(BASE_URL + "/subscription/otp/verify", {
+      applicationId: APP_ID,
+      password: APP_PASS,
+      referenceNo,
+      otp,
     });
 
     // Check if the request was successful
@@ -132,16 +128,8 @@ router.post("/send-sms", async (req, res) => {
   };
 
   try {
-    const response = await fetch(BASE_URL + "/sms/send", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
-    if (response.status === 200) {
-      const data = await response.json();
-      res.status(200).send(data);
-    } else {
-      throw new Error("Failed to send SMS");
-    }
+    const response = await axios.post(BASE_URL + "/sms/send", payload);
+    res.status(200).send(response.data);
   } catch (error: any) {
     console.error(error);
     res.status(500).send({ error: "Failed to send SMS" });
@@ -215,6 +203,37 @@ router.post("/hadith/fav", async (req, res) => {
       .values({
         hadithId: +hadithId,
         mobile,
+      })
+      .returning();
+    return res.status(201).json(fav);
+  } catch (e) {
+    console.log(e);
+    return res.status(400).json({ message: "Bad Request" });
+  }
+});
+
+router.get("/favContact/:mobile", async (req, res) => {
+  try {
+    const { mobile } = req.params;
+    const fav = await db.query.favContact.findMany({
+      where: (model, { eq }) => eq(model.user_mobile, mobile),
+    });
+    return res.status(201).json(fav);
+  } catch (e) {
+    console.log(e);
+    return res.status(400).json({ message: "Bad Request" });
+  }
+});
+
+router.post("/favContact/:mobile", async (req, res) => {
+  try {
+    const { mobile } = req.params;
+    const { fav_mobile } = req.body;
+    const fav = await db
+      .insert(favContact)
+      .values({
+        user_mobile: mobile,
+        fav_mobile,
       })
       .returning();
     return res.status(201).json(fav);
