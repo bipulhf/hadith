@@ -80,7 +80,6 @@ router.post("/subscribe", async (req, res) => {
         statusCode: response.data.statusCode,
         referenceNo,
         statusDetail: response.data.statusDetail,
-        applicationMetaData: META_DATA,
       });
     } else {
       throw new Error("Failed to send data to bdapps.com/sub");
@@ -94,46 +93,54 @@ router.post("/subscribe", async (req, res) => {
 router.post("/confirm_subscription", async (req, res) => {
   try {
     const { referenceNo, otp } = req.body;
+     
 
     // Check if all required fields are present and non-empty strings
     if (!referenceNo || !otp) {
       throw new Error("Invalid request body");
     }
 
-    // Make a POST request to verify OTP
+    //Make a POST request to verify OTP
     const response = await axios.post(BASE_URL + "/subscription/otp/verify", {
       applicationId: APP_ID,
       password: APP_PASS,
       referenceNo,
       otp,
     });
-
+ 
     // Check if the request was successful
-    if (response.status === 200) {
-      res.send("OTP verified successfully");
-    } else {
-      throw new Error("Failed to verify OTP");
-    }
+    if(response.data.statusCode=='S1000') return res.status(200).send("OTP verified successfully");
+    else return res.status(400).send(response.data.statusDetail)
+
   } catch (error: any) {
-    res.status(400).send(error.message);
+    return res.status(400).send(error.message);
   }
+   
 });
 
 //BroadCast SMS
 router.post("/send-sms", async (req, res) => {
+
+   const {messageBody, numbers} = req.body
+   let prefNumbers = numbers.map((number: string) => "tel:88" + number);
+
   const payload = {
     applicationId: APP_ID,
     password: APP_PASS,
-    message: "Sample Message",
-    destinationAddresses: ["tel:8801812345678"],
+    message: messageBody,
+    destinationAddresses: prefNumbers,
   };
+
+  console.log(prefNumbers)
 
   try {
     const response = await axios.post(BASE_URL + "/sms/send", payload);
-    res.status(200).send(response.data);
+    console.log(response)
+    if(response.data.statusCode=="S1000") return res.status(200).send("SUCCESS")
+      else return res.status(500).send({ error: "Failed to send SMS" });
   } catch (error: any) {
     console.error(error);
-    res.status(500).send({ error: "Failed to send SMS" });
+    return res.status(500).send({ error: "Failed to send SMS" });
   }
 });
 
@@ -213,7 +220,7 @@ router.post("/hadith/fav", async (req, res) => {
   }
 });
 
-router.get("/favContact/:mobile", async (req, res) => {
+router.get("/favContacts/:mobile", async (req, res) => {
   try {
     const { mobile } = req.params;
     const fav = await db.query.favContact.findMany({
@@ -229,16 +236,21 @@ router.get("/favContact/:mobile", async (req, res) => {
 router.post("/favContact/:mobile", async (req, res) => {
   try {
     const { mobile } = req.params;
-    const { fav_mobile, name } = req.body;
+    const { favMobile, name } = req.body;
     const fav = await db
       .insert(favContact)
       .values({
         user_mobile: mobile,
-        fav_mobile,
+        fav_mobile:favMobile,
         name,
       })
       .returning();
-    return res.status(201).json(fav);
+      const contact = {
+        userNumber: mobile,
+        name: name,
+        number: favMobile
+      }
+    return res.status(201).json(contact);
   } catch (e) {
     console.log(e);
     return res.status(400).json({ message: "Bad Request" });
@@ -248,17 +260,17 @@ router.post("/favContact/:mobile", async (req, res) => {
 router.put("/favContact/:mobile", async (req, res) => {
   try {
     const { mobile } = req.params;
-    const { fav_mobile, edited_fav_mobile, name } = req.body;
+    const { favMobile, editedFavMobile, editedName } = req.body;
     const fav = await db
       .update(favContact)
       .set({
-        fav_mobile: edited_fav_mobile,
-        name,
+        fav_mobile: editedFavMobile,
+        name:editedName,
       })
       .where(
         and(
           eq(favContact.user_mobile, mobile),
-          eq(favContact.fav_mobile, fav_mobile)
+          eq(favContact.fav_mobile, favMobile)
         )
       )
       .returning();
@@ -272,17 +284,17 @@ router.put("/favContact/:mobile", async (req, res) => {
 router.delete("/favContact/:mobile", async (req, res) => {
   try {
     const { mobile } = req.params;
-    const { fav_mobile } = req.body;
+    const { favMobile } = req.body;
     const fav = await db
       .delete(favContact)
       .where(
         and(
           eq(favContact.user_mobile, mobile),
-          eq(favContact.fav_mobile, fav_mobile)
+          eq(favContact.fav_mobile, favMobile)
         )
       )
       .returning();
-    return res.status(201).json(fav);
+    return res.status(201).json({message:"Deleted Contact"});
   } catch (e) {
     console.log(e);
     return res.status(400).json({ message: "Bad Request" });
