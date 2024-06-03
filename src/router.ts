@@ -174,29 +174,18 @@ router.get("/hadith", async (req, res) => {
   }
 });
 
-router.get("/hadith/:id", async (req, res) => {
-  const { id } = req.params;
+router.get("/hadith/fav/:mobile", async (req, res) => {
   try {
-    const data = await db.query.hadith.findMany({
-      where: (model, { eq }) => eq(model.id, +id),
-    });
-    return res.status(200).json(data);
-  } catch (e) {
-    console.log(e);
-    return res.status(400).json({ message: "Bad Request" });
-  }
-});
-
-router.get("/hadith/fav", async (req, res) => {
-  try {
-    const { mobile } = req.body;
+    const { mobile } = req.params;
     const fav = await db.query.favHadith.findMany({
       where: (model, { eq }) => eq(model.mobile, mobile),
       with: {
         hadith: true,
       },
     });
-    return res.status(201).json(fav);
+    
+    const response = fav.map(item => item.hadith)
+    return res.status(201).json(response);
   } catch (e) {
     console.log(e);
     return res.status(400).json({ message: "Bad Request" });
@@ -219,6 +208,26 @@ router.post("/hadith/fav", async (req, res) => {
     return res.status(400).json({ message: "Bad Request" });
   }
 });
+ 
+
+
+router.post("/hadith/fav/delete", async (req, res) => {
+  try {
+    const { mobile, hadithId } = req.body;
+    const fav = await db
+      .delete(favHadith)
+      .where(
+        and(
+          eq(favHadith.hadithId, hadithId),
+          eq(favHadith.mobile, mobile)
+        ))
+      .returning();
+    return res.status(201).json(fav);
+  } catch (e) {
+    console.log(e);
+    return res.status(400).json({ message: "Bad Request" });
+  }
+});
 
 router.get("/favContacts/:mobile", async (req, res) => {
   try {
@@ -226,7 +235,14 @@ router.get("/favContacts/:mobile", async (req, res) => {
     const fav = await db.query.favContact.findMany({
       where: (model, { eq }) => eq(model.user_mobile, mobile),
     });
-    return res.status(201).json(fav);
+     
+    const contact = fav.map(item => ({
+      userNumber: item.user_mobile,
+      name: item.name,
+      number: item.fav_mobile
+    }));
+
+    return res.status(201).json(contact);
   } catch (e) {
     console.log(e);
     return res.status(400).json({ message: "Bad Request" });
@@ -281,10 +297,10 @@ router.put("/favContact/:mobile", async (req, res) => {
   }
 });
 
-router.delete("/favContact/:mobile", async (req, res) => {
+router.post("/deleteContact", async (req, res) => {
   try {
-    const { mobile } = req.params;
-    const { favMobile } = req.body;
+    
+    const {mobile,favMobile } = req.body;
     const fav = await db
       .delete(favContact)
       .where(
@@ -294,7 +310,23 @@ router.delete("/favContact/:mobile", async (req, res) => {
         )
       )
       .returning();
-    return res.status(201).json({message:"Deleted Contact"});
+      
+    return res.status(201).json({message:"SUCCESS"});
+  } catch (e) {
+    console.log(e);
+    return res.status(400).json({ message: "Bad Request" });
+  }
+});
+
+
+
+router.get("/hadith/:id", async (req, res) => {
+  const { id } = req.params;
+  try {
+    const data = await db.query.hadith.findMany({
+      where: (model, { eq }) => eq(model.id, +id),
+    });
+    return res.status(200).json(data);
   } catch (e) {
     console.log(e);
     return res.status(400).json({ message: "Bad Request" });
