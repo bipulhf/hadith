@@ -54,12 +54,35 @@ router.post("/check-subscription", async (req, res) => {
   }
 });
 
+router.post("/unsubscribe", async (req, res) => {
+  try {
+    const number = "01872583391";
+    const response = await axios.post("https://developer.bdapps.com/subscription/send", {
+      applicationId: APP_ID,
+      password: APP_PASS,
+      subscriberId: "tel:8801872583391",
+      version: "1.0",
+      action:"1"
+    });
+    console.log(response.data); // Make sure to log the data property of the response
+  } catch (e) {
+    if (e instanceof SyntaxError) {
+      console.error("Failed to parse JSON:", e);
+      res.status(400).send({ error: "Invalid JSON" });
+    } else {
+      console.error("An error occurred:", e);
+      res.status(500).send({ error: "An error occurred" });
+    }
+  }
+});
+
 //Subscribe a User
 router.post("/subscribe", async (req, res) => {
   try {
     const { number } = req.body;
+    console.log(number)
 
-    // Make a POST request to bdapps.com/sub
+   // Make a POST request to bdapps.com/sub
     const response = await axios.post(BASE_URL + "/subscription/otp/request/", {
       applicationId: APP_ID,
       password: APP_PASS,
@@ -67,18 +90,21 @@ router.post("/subscribe", async (req, res) => {
       applicationHash: APP_HASH,
       applicationMetaData: META_DATA,
     });
-
-    console.log(response);
+     
+    // const response = {data:{
+    //   statusCode:"S1000",
+    //   referenceNo:"92u394u34",
+    //   statusDetail:"sdsd"
+    // }}
 
     // Check if the request was successful
-    if (response.status === 200) {
+    if(response.data.statusCode=='S1000') {
       // Extract referenceNo from the response
-      const { referenceNo } = response.data;
-
+       
       // Send response with referenceNo
-      res.status(200).json({
+      return res.status(200).json({
         statusCode: response.data.statusCode,
-        referenceNo,
+        referenceNo: response.data.referenceNo,
         statusDetail: response.data.statusDetail,
       });
     } else {
@@ -94,7 +120,7 @@ router.post("/confirm_subscription", async (req, res) => {
   try {
     const { referenceNo, otp } = req.body;
      
-
+     console.log({referenceNo,otp})
     // Check if all required fields are present and non-empty strings
     if (!referenceNo || !otp) {
       throw new Error("Invalid request body");
@@ -107,10 +133,18 @@ router.post("/confirm_subscription", async (req, res) => {
       referenceNo,
       otp,
     });
- 
+
+  //   const response = {data: {
+  //   subscriptionStatus: 'INITIAL CHARGING PENDING',
+  //   subscriberId: 'tel:8801812993107',
+  //   statusDetail: 'Success',
+  //   version: '1.0',
+  //   statusCode: 'S1000'
+  // }}
+    console.log(response)
     // Check if the request was successful
-    if(response.data.statusCode=='S1000') return res.status(200).send("OTP verified successfully");
-    else return res.status(400).send(response.data.statusDetail)
+    if(response.data.statusCode=='S1000') return res.status(200).json({message:"OTP verified successfully"});
+    else return res.status(400).json({message:response.data.statusDetail})
 
   } catch (error: any) {
     return res.status(400).send(error.message);
@@ -121,21 +155,28 @@ router.post("/confirm_subscription", async (req, res) => {
 //BroadCast SMS
 router.post("/send-sms", async (req, res) => {
 
-   const {messageBody, numbers} = req.body
-   let prefNumbers = numbers.map((number: string) => "tel:88" + number);
+   const {userNumber,messageBody} = req.body 
+
+   try {
+  
+    const fav = await db.query.favContact.findMany({
+      where: (model, { eq }) => eq(model.user_mobile, userNumber),
+    });
+     
+    const contacts = fav.map(item => ("tel:88"+item.fav_mobile ));
+    console.log(contacts)
 
   const payload = {
     applicationId: APP_ID,
     password: APP_PASS,
     message: messageBody,
-    destinationAddresses: prefNumbers,
-  };
+    destinationAddresses: contacts
+  }
 
-  console.log(prefNumbers)
+  console.log(payload)
 
-  try {
-    const response = await axios.post(BASE_URL + "/sms/send", payload);
-    console.log(response)
+   const response = await axios.post(BASE_URL + "/sms/send", payload);
+    
     if(response.data.statusCode=="S1000") return res.status(200).send("SUCCESS")
       else return res.status(500).send({ error: "Failed to send SMS" });
   } catch (error: any) {
@@ -290,7 +331,14 @@ router.put("/favContact/:mobile", async (req, res) => {
         )
       )
       .returning();
-    return res.status(201).json(fav);
+     
+      const contact = {
+        userNumber: mobile,
+        name: editedName,
+        number: editedFavMobile
+      }
+
+    return res.status(201).json(contact);
   } catch (e) {
     console.log(e);
     return res.status(400).json({ message: "Bad Request" });
